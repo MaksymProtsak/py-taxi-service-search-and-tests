@@ -61,6 +61,17 @@ class DriverSearchForm(forms.Form):
     )
 
 
+class ManufacturerSearchForm(forms.Form):
+    manufacturer = forms.CharField(
+        max_length=255,
+        required=False,
+        label="",
+        widget=forms.TextInput(
+            attrs={"placeholder": "Search manufacturer"}
+        )
+    )
+
+
 def validate_license_number(
     license_number,
 ):  # regex validation is also possible here
