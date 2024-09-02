@@ -25,3 +25,21 @@ class AdminTest(TestCase):
         url = reverse("admin:taxi_driver_changelist")
         res = self.client.get(url)
         self.assertContains(res, self.driver.license_number)
+
+    def test_admin_detail_license_number_listed(self):
+        """
+        Test that driver`s license_number is on driver detail admin page
+        :return:
+        """
+        url = reverse("admin:taxi_driver_change", args=[self.driver.id])
+        res = self.client.get(url)
+        self.assertContains(res, self.driver.license_number)
+
+    def test_admin_add_license_number_listed(self):
+        """
+        Test that driver`s license_number is on driver add admin page
+        :return:
+        """
+        url = reverse("admin:taxi_driver_add")
+        res = self.client.get(url)
+        self.assertContains(res, "License number")
