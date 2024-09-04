@@ -6,8 +6,14 @@ from django.views import generic
 from django.contrib.auth.mixins import LoginRequiredMixin
 
 from .models import Driver, Car, Manufacturer
-from .forms import DriverCreationForm, DriverLicenseUpdateForm, CarForm, CarSearchForm, DriverSearchForm, \
-    ManufacturerSearchForm
+from .forms import (
+    DriverCreationForm,
+    DriverLicenseUpdateForm,
+    CarForm,
+    CarSearchForm,
+    DriverSearchForm,
+    ManufacturerSearchForm,
+)
 
 
 @login_required
@@ -48,8 +54,10 @@ class ManufacturerListView(LoginRequiredMixin, generic.ListView):
     def get_queryset(self):
         queryset = Manufacturer.objects.all()
         form = ManufacturerSearchForm(self.request.GET)
-        if form.is_valid():
-            return queryset.filter(name__icontains=self.request.GET.get("manufacturer"))
+        if form.is_valid() and form.data.get(key="manufacturer") is not None:
+            return queryset.filter(
+                name__icontains=self.request.GET.get("manufacturer")
+            )
         return queryset
 
 
@@ -162,3 +170,4 @@ def toggle_assign_to_car(request, pk):
     else:
         driver.cars.add(pk)
     return HttpResponseRedirect(reverse_lazy("taxi:car-detail", args=[pk]))
+
