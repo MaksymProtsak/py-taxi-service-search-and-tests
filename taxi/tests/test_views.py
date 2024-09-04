@@ -74,4 +74,21 @@ class PrivateManufacturerTest(TestCase):
     def test_is_contain_search_form(self):
         response = self.client.get(MANUFACTURER_URL)
         self.assertIn("search_form", response.context)
-        print(response.__dict__.keys())
+
+    def test_search_form(self):
+        Manufacturer.objects.create(name="Audi", country="Germany")
+        Manufacturer.objects.create(name="BMW", country="Germany")
+        Manufacturer.objects.create(name="Volkswagen", country="Germany")
+        manufacturers = Manufacturer.objects.all()
+        test_keys = {1: "", 2: "Audi"}
+        response = self.client.get(MANUFACTURER_URL, {"manufacturer": test_keys[1]})
+        search_value_key = response.context_data["search_form"]["manufacturer"].value()
+        self.assertEqual(search_value_key, test_keys[1])
+        self.assertQuerysetEqual(manufacturers, response.context_data["object_list"])
+        response = self.client.get(MANUFACTURER_URL, {"manufacturer": test_keys[2]})
+        search_value_key = response.context_data["search_form"]["manufacturer"].value()
+        self.assertNotEqual(search_value_key, test_keys[1])
+        self.assertEqual(search_value_key, test_keys[2])
+        print(f">{search_value_key}<")
+        print(response.context_data.keys())
+        print(response.context_data["object_list"])
