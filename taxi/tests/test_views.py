@@ -76,11 +76,11 @@ class PrivateManufacturerTest(TestCase):
         self.assertIn("search_form", response.context)
 
     def test_search_form(self):
+        test_keys = {1: "", 2: "Audi", 3: "BMW", 4: "w"}
         Manufacturer.objects.create(name="Audi", country="Germany")
         Manufacturer.objects.create(name="BMW", country="Germany")
         Manufacturer.objects.create(name="Volkswagen", country="Germany")
         manufacturers = Manufacturer.objects.all()
-        test_keys = {1: "", 2: "Audi", 3: "BMW", 4: "w"}
 
         response = self.client.get(
             MANUFACTURER_URL,
@@ -106,3 +106,49 @@ class PrivateManufacturerTest(TestCase):
     def test_is_contain_paginator(self):
         res = self.client.get(MANUFACTURER_URL)
         self.assertIn("paginator", res.context)
+
+    def test_is_pagination_appears(self):
+        test_keys = {1: False, 2: False, 3: True}
+        res = self.client.get(MANUFACTURER_URL)
+        pagination_per_page = res.context_data["paginator"].per_page
+
+        self.assertFalse(res.context_data["is_paginated"], test_keys[1])
+
+        for i in range(pagination_per_page):
+            Manufacturer.objects.create(
+                name=f"Test manufacturer {i}",
+                country=f"Test country {i}"
+            )
+
+        res = self.client.get(MANUFACTURER_URL)
+
+        self.assertFalse(res.context_data["is_paginated"], test_keys[2])
+
+        Manufacturer.objects.create(
+            name=f"Test manufacturer {i + 1}",
+            country=f"Test country {i + 1}"
+        )
+
+        res = self.client.get(MANUFACTURER_URL)
+
+        self.assertTrue(res.context_data["is_paginated"], test_keys[3])
+
+    def test_is_pagination_disappears(self):
+        test_keys = {1: True, 2: False}
+        res = self.client.get(MANUFACTURER_URL)
+        pagination_per_page = res.context_data["paginator"].per_page
+
+        for i in range(pagination_per_page + 1):
+            Manufacturer.objects.create(
+                name=f"Test manufacturer {i}",
+                country=f"Test country {i}"
+            )
+
+        res = self.client.get(MANUFACTURER_URL)
+
+        self.assertTrue(res.context_data["is_paginated"], test_keys[1])
+
+        Manufacturer.objects.get(id=1).delete()
+        res = self.client.get(MANUFACTURER_URL)
+
+        self.assertFalse(res.context_data["is_paginated"], test_keys[2])
