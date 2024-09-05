@@ -80,15 +80,29 @@ class PrivateManufacturerTest(TestCase):
         Manufacturer.objects.create(name="BMW", country="Germany")
         Manufacturer.objects.create(name="Volkswagen", country="Germany")
         manufacturers = Manufacturer.objects.all()
-        test_keys = {1: "", 2: "Audi"}
-        response = self.client.get(MANUFACTURER_URL, {"manufacturer": test_keys[1]})
+        test_keys = {1: "", 2: "Audi", 3: "BMW", 4: "w"}
+
+        response = self.client.get(
+            MANUFACTURER_URL,
+            {"manufacturer": test_keys[1]}
+        )
         search_value_key = response.context_data["search_form"]["manufacturer"].value()
+        db_q = manufacturers.filter(name__icontains=test_keys[1])
         self.assertEqual(search_value_key, test_keys[1])
-        self.assertQuerysetEqual(manufacturers, response.context_data["object_list"])
-        response = self.client.get(MANUFACTURER_URL, {"manufacturer": test_keys[2]})
-        search_value_key = response.context_data["search_form"]["manufacturer"].value()
-        self.assertNotEqual(search_value_key, test_keys[1])
-        self.assertEqual(search_value_key, test_keys[2])
-        print(f">{search_value_key}<")
-        print(response.context_data.keys())
-        print(response.context_data["object_list"])
+        self.assertQuerysetEqual(db_q, response.context_data["object_list"])
+
+        for key, value in test_keys.items():
+            if key != 1:
+                response = self.client.get(
+                    MANUFACTURER_URL,
+                    {"manufacturer": value}
+                )
+                search_value_key = response.context_data["search_form"]["manufacturer"].value()
+                db_q = manufacturers.filter(name__icontains=value)
+                self.assertNotEqual(search_value_key, test_keys[key - 1])
+                self.assertEqual(search_value_key, value)
+                self.assertQuerysetEqual(db_q, response.context_data["object_list"])
+
+    def test_is_contain_paginator(self):
+        res = self.client.get(MANUFACTURER_URL)
+        self.assertIn("paginator", res.context)
