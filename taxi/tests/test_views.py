@@ -152,3 +152,49 @@ class PrivateManufacturerTest(TestCase):
         res = self.client.get(MANUFACTURER_URL)
 
         self.assertFalse(res.context_data["is_paginated"], test_keys[2])
+
+    def test_next_page_pagination_with_save_qwery_param(self):
+        test_keys = {
+            1: {},
+            2: {"manufacturer": "", "page": 1},
+            3: {"manufacturer": "", "page": 2},
+            4: {"manufacturer": "a", "page": 1},
+            5: {"manufacturer": "a", "page": 2}
+        }
+        manufacturers = {
+            "Toyota": "Japan",
+            "BMW": "Germany",
+            "Ford": "USA",
+            "Hyundai": "South Korea",
+            "Ferrari": "Italy",
+            "Renault": "France",
+            "Volvo": "Sweden",
+            "Volkswagen": "Germany",
+            "Kia": "South Korea",
+            "Chevrolet": "USA",
+            "ZAZ": "Ukraine"
+        }
+        res = self.client.get(MANUFACTURER_URL, test_keys[1])
+        pagination_per_page = res.context_data["paginator"].per_page
+
+        for manufacturer, country in manufacturers.items():
+            Manufacturer.objects.create(name=manufacturer, country=country)
+
+        for i in range(2, len(test_keys), 2):
+            db_q = Manufacturer.objects.filter(name__icontains=test_keys[i]["manufacturer"])
+            res = self.client.get(
+                MANUFACTURER_URL,
+                test_keys[i]
+            )
+            self.assertQuerysetEqual(
+                res.context_data["manufacturer_list"],
+                db_q[:pagination_per_page]
+            )
+            res = self.client.get(
+                MANUFACTURER_URL,
+                test_keys[i + 1]
+            )
+            self.assertQuerysetEqual(
+                res.context_data["manufacturer_list"],
+                db_q[pagination_per_page: pagination_per_page * 2]
+            )
