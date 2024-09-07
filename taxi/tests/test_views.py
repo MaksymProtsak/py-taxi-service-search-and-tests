@@ -159,7 +159,8 @@ class PrivateManufacturerTest(TestCase):
             2: {"manufacturer": "", "page": 1},
             3: {"manufacturer": "", "page": 2},
             4: {"manufacturer": "a", "page": 1},
-            5: {"manufacturer": "a", "page": 2}
+            5: {"manufacturer": "a", "page": 2},
+            6: {"manufacturer": "T", "page": 1},
         }
         manufacturers = {
             "Toyota": "Japan",
@@ -180,7 +181,7 @@ class PrivateManufacturerTest(TestCase):
         for manufacturer, country in manufacturers.items():
             Manufacturer.objects.create(name=manufacturer, country=country)
 
-        for i in range(2, len(test_keys), 2):
+        for i in range(2, 5, 2):
             db_q = Manufacturer.objects.filter(name__icontains=test_keys[i]["manufacturer"])
             res = self.client.get(
                 MANUFACTURER_URL,
@@ -198,3 +199,13 @@ class PrivateManufacturerTest(TestCase):
                 res.context_data["manufacturer_list"],
                 db_q[pagination_per_page: pagination_per_page * 2]
             )
+
+        db_q = Manufacturer.objects.filter(name__icontains=test_keys[6]["manufacturer"])
+        res = self.client.get(
+            MANUFACTURER_URL,
+            test_keys[6]
+        )
+        self.assertQuerysetEqual(
+            res.context_data["manufacturer_list"],
+            db_q[:pagination_per_page]
+        )
