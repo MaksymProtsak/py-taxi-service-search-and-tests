@@ -1,9 +1,10 @@
 from django.contrib.auth import get_user_model
-from django.http import HttpRequest
 from django.test import TestCase, Client
 from django.urls import reverse
 
 from taxi.models import Manufacturer
+from taxi_service.settings import INTERNAL_IPS
+from django.core.management.commands.runserver import Command
 
 HOME_PAGE = reverse("taxi:index")
 MANUFACTURER_URL = reverse("taxi:manufacturer-list")
@@ -18,9 +19,7 @@ class PublicHomePageTest(TestCase):
 class PrivateHomePageTest(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
-            username="test.user",
-            license_number="AAA123456",
-            password="TestPassword123"
+            username="test.user", license_number="AAA123456", password="TestPassword123"
         )
         self.client.force_login(self.user)
 
@@ -50,9 +49,7 @@ class PublicManufacturerTest(TestCase):
 class PrivateManufacturerTest(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
-            username="test.user",
-            license_number="AAA123456",
-            password="TestPassword123"
+            username="test.user", license_number="AAA123456", password="TestPassword123"
         )
         self.client.force_login(self.user)
 
@@ -83,10 +80,7 @@ class PrivateManufacturerTest(TestCase):
         Manufacturer.objects.create(name="Volkswagen", country="Germany")
         manufacturers = Manufacturer.objects.all()
 
-        response = self.client.get(
-            MANUFACTURER_URL,
-            {"manufacturer": test_keys[1]}
-        )
+        response = self.client.get(MANUFACTURER_URL, {"manufacturer": test_keys[1]})
         search_value_key = response.context_data["search_form"]["manufacturer"].value()
         db_q = manufacturers.filter(name__icontains=test_keys[1])
         self.assertEqual(search_value_key, test_keys[1])
@@ -94,11 +88,10 @@ class PrivateManufacturerTest(TestCase):
 
         for key, value in test_keys.items():
             if key != 1:
-                response = self.client.get(
-                    MANUFACTURER_URL,
-                    {"manufacturer": value}
-                )
-                search_value_key = response.context_data["search_form"]["manufacturer"].value()
+                response = self.client.get(MANUFACTURER_URL, {"manufacturer": value})
+                search_value_key = response.context_data["search_form"][
+                    "manufacturer"
+                ].value()
                 db_q = manufacturers.filter(name__icontains=value)
                 self.assertNotEqual(search_value_key, test_keys[key - 1])
                 self.assertEqual(search_value_key, value)
@@ -117,8 +110,7 @@ class PrivateManufacturerTest(TestCase):
 
         for i in range(pagination_per_page):
             Manufacturer.objects.create(
-                name=f"Test manufacturer {i}",
-                country=f"Test country {i}"
+                name=f"Test manufacturer {i}", country=f"Test country {i}"
             )
 
         res = self.client.get(MANUFACTURER_URL)
@@ -126,8 +118,7 @@ class PrivateManufacturerTest(TestCase):
         self.assertFalse(res.context_data["is_paginated"], test_keys[2])
 
         Manufacturer.objects.create(
-            name=f"Test manufacturer {i + 1}",
-            country=f"Test country {i + 1}"
+            name=f"Test manufacturer {i + 1}", country=f"Test country {i + 1}"
         )
 
         res = self.client.get(MANUFACTURER_URL)
@@ -141,8 +132,7 @@ class PrivateManufacturerTest(TestCase):
 
         for i in range(pagination_per_page + 1):
             Manufacturer.objects.create(
-                name=f"Test manufacturer {i}",
-                country=f"Test country {i}"
+                name=f"Test manufacturer {i}", country=f"Test country {i}"
             )
 
         res = self.client.get(MANUFACTURER_URL)
@@ -174,7 +164,7 @@ class PrivateManufacturerTest(TestCase):
             "Volkswagen": "Germany",
             "Kia": "South Korea",
             "Chevrolet": "USA",
-            "ZAZ": "Ukraine"
+            "ZAZ": "Ukraine",
         }
         res = self.client.get(MANUFACTURER_URL, test_keys[1])
         pagination_per_page = res.context_data["paginator"].per_page
@@ -183,22 +173,17 @@ class PrivateManufacturerTest(TestCase):
             Manufacturer.objects.create(name=manufacturer, country=country)
 
         for i in range(2, 5, 2):
-            db_q = Manufacturer.objects.filter(name__icontains=test_keys[i]["manufacturer"])
-            res = self.client.get(
-                MANUFACTURER_URL,
-                test_keys[i]
+            db_q = Manufacturer.objects.filter(
+                name__icontains=test_keys[i]["manufacturer"]
             )
+            res = self.client.get(MANUFACTURER_URL, test_keys[i])
+            self.assertQuerysetEqual(
+                res.context_data["manufacturer_list"], db_q[:pagination_per_page]
+            )
+            res = self.client.get(MANUFACTURER_URL, test_keys[i + 1])
             self.assertQuerysetEqual(
                 res.context_data["manufacturer_list"],
-                db_q[:pagination_per_page]
-            )
-            res = self.client.get(
-                MANUFACTURER_URL,
-                test_keys[i + 1]
-            )
-            self.assertQuerysetEqual(
-                res.context_data["manufacturer_list"],
-                db_q[pagination_per_page: pagination_per_page * 2]
+                db_q[pagination_per_page : pagination_per_page * 2],
             )
 
         # db_q = Manufacturer.objects.filter(name__icontains=test_keys[6]["manufacturer"])
@@ -215,7 +200,6 @@ class PrivateManufacturerTest(TestCase):
         res = self.client.get(MANUFACTURER_URL)
         self.assertContains(res, "Create")
 
-    def test_is_create_button_has_right_template(self):
+    def test_is_create_button_has_right_url(self):
         res = self.client.get(MANUFACTURER_URL)
-        print(reverse('taxi:manufacturer-create'))
-        # self.assertContains(res, '<a href="%s">Create</a>' % get_full_path("taxi:manufacturer-create"), html=True)
+        self.assertContains(res, reverse("taxi:manufacturer-create"), html=False)
