@@ -186,20 +186,41 @@ class PrivateManufacturerTest(TestCase):
                 db_q[pagination_per_page : pagination_per_page * 2],
             )
 
-        # db_q = Manufacturer.objects.filter(name__icontains=test_keys[6]["manufacturer"])
-        # res = self.client.get(
-        #     MANUFACTURER_URL,
-        #     test_keys[6]
-        # )
-        # self.assertQuerysetEqual(
-        #     res.context_data["manufacturer_list"],
-        #     db_q[:pagination_per_page]
-        # )
-
     def test_is_contain_create_button(self):
         res = self.client.get(MANUFACTURER_URL)
         self.assertContains(res, "Create")
 
     def test_is_create_button_has_right_url(self):
         res = self.client.get(MANUFACTURER_URL)
-        self.assertContains(res, reverse("taxi:manufacturer-create"), html=False)
+        self.assertContains(
+            res,
+            reverse("taxi:manufacturer-create"), html=False
+        )
+
+    def test_is_manufacturer_has_create_link(self):
+        Manufacturer.objects.create(
+            name="Test Manufacturer",
+            country="Test country"
+        )
+        res = self.client.get(MANUFACTURER_URL)
+        manufacturer = Manufacturer.objects.get(name="Test Manufacturer")
+        self.assertContains(
+            res,
+            reverse(
+                "taxi:manufacturer-update", kwargs={"pk": manufacturer.id}
+            )
+        )
+
+    def test_is_manufacturer_has_delete_link(self):
+        Manufacturer.objects.create(
+            name="Test Manufacturer",
+            country="Test country"
+        )
+        res = self.client.get(MANUFACTURER_URL)
+        manufacturer = Manufacturer.objects.get(name="Test Manufacturer")
+        self.assertContains(
+            res,
+            reverse(
+                "taxi:manufacturer-delete", kwargs={"pk": manufacturer.id}
+            )
+        )
