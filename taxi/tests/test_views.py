@@ -46,7 +46,7 @@ class PublicManufacturerTest(TestCase):
         self.assertNotEqual(res.status_code, 200)
 
 
-class PrivateManufacturerTest(TestCase):
+class PublicManufacturerTest(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
             username="test.user", license_number="AAA123456", password="TestPassword123"
@@ -223,4 +223,27 @@ class PrivateManufacturerTest(TestCase):
             reverse(
                 "taxi:manufacturer-delete", kwargs={"pk": manufacturer.id}
             )
+        )
+
+    def test_update_manufacturer_is_fields_filled(self):
+        Manufacturer.objects.create(
+            name="Test Manufacturer",
+            country="Test Country"
+        )
+        manufacturer = Manufacturer.objects.get(id=1)
+        res = self.client.get(
+            reverse(
+                "taxi:manufacturer-update",
+                kwargs={"pk": manufacturer.id}
+            )
+        )
+        self.assertContains(res, manufacturer.name)
+        self.assertContains(res, manufacturer.country)
+        self.assertEqual(
+            res.context_data["form"].initial,
+            {
+                "id": manufacturer.id,
+                "name": manufacturer.name,
+                "country": manufacturer.country
+            }
         )
