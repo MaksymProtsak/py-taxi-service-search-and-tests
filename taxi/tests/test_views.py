@@ -183,7 +183,7 @@ class PublicManufacturerTest(TestCase):
             res = self.client.get(MANUFACTURER_URL, test_keys[i + 1])
             self.assertQuerysetEqual(
                 res.context_data["manufacturer_list"],
-                db_q[pagination_per_page : pagination_per_page * 2],
+                db_q[pagination_per_page: pagination_per_page * 2],
             )
 
     def test_is_contain_create_button(self):
@@ -247,3 +247,79 @@ class PublicManufacturerTest(TestCase):
                 "country": manufacturer.country
             }
         )
+
+    def test_update_manufacturer_is_write_template(self):
+        Manufacturer.objects.create(
+            name="Test Manufacturer",
+            country="Test Country"
+        )
+        manufacturer = Manufacturer.objects.get(id=1)
+        res = self.client.get(
+            reverse(
+                "taxi:manufacturer-update",
+                kwargs={"pk": manufacturer.id}
+            )
+        )
+        self.assertTemplateUsed(res, "taxi/manufacturer_form.html")
+
+    def test_update_manufacturer_is_right_page_label(self):
+        Manufacturer.objects.create(
+            name="Test Manufacturer",
+            country="Test Country"
+        )
+        manufacturer = Manufacturer.objects.get(id=1)
+        res = self.client.get(
+            reverse(
+                "taxi:manufacturer-update",
+                kwargs={"pk": manufacturer.id}
+            )
+        )
+        self.assertContains(res, "Update manufacturer")
+
+    def test_update_manufacturer_by_name_and_country(self):
+        Manufacturer.objects.create(
+            name="Test Manufacturer",
+            country="Test Country"
+        )
+        manufacturer = Manufacturer.objects.get(id=1)
+        res = self.client.get(
+            reverse(
+                "taxi:manufacturer-update",
+                kwargs={"pk": manufacturer.id}
+            )
+        )
+        res.context["form"].initial["name"] = "Audi"
+        res.context["form"].initial["country"] = "Deutschland"
+        self.client.post(
+            reverse(
+                "taxi:manufacturer-update",
+                kwargs={"pk": manufacturer.id}
+            ),
+            res.context["form"].initial
+        )
+        self.assertEqual(manufacturer, Manufacturer.objects.get(id=1))
+
+    def test_update_manufacturer_is_redirect(self):
+        Manufacturer.objects.create(
+            name="Test Manufacturer",
+            country="Test Country"
+        )
+        manufacturer = Manufacturer.objects.get(id=1)
+        res = self.client.get(
+            reverse(
+                "taxi:manufacturer-update",
+                kwargs={"pk": manufacturer.id}
+            )
+        )
+        res = self.client.post(
+            reverse(
+                "taxi:manufacturer-update",
+                kwargs={"pk": manufacturer.id}
+            ),
+            res.context["form"].initial
+        )
+        self.assertEqual(manufacturer, Manufacturer.objects.get(id=1))
+        self.assertEqual(res.status_code, 302)
+
+    def test_update_manufacturer_is_right_redirect_page(self):
+        pass
