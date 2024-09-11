@@ -46,7 +46,7 @@ class PublicManufacturerTest(TestCase):
         self.assertNotEqual(res.status_code, 200)
 
 
-class PublicManufacturerTest(TestCase):
+class PrivetManufacturerTest(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
             username="test.user", license_number="AAA123456", password="TestPassword123"
@@ -322,4 +322,68 @@ class PublicManufacturerTest(TestCase):
         self.assertEqual(res.status_code, 302)
 
     def test_update_manufacturer_is_right_redirect_page(self):
-        pass
+        Manufacturer.objects.create(
+            name="Test Manufacturer",
+            country="Test Country"
+        )
+        manufacturer = Manufacturer.objects.get(id=1)
+        res = self.client.get(
+            reverse(
+                "taxi:manufacturer-update",
+                kwargs={"pk": manufacturer.id}
+            )
+        )
+        res = self.client.post(
+            reverse(
+                "taxi:manufacturer-update",
+                kwargs={"pk": manufacturer.id}
+            ),
+            res.context["form"].initial
+        )
+        self.assertEqual(manufacturer, Manufacturer.objects.get(id=1))
+        self.assertEqual(res.url, reverse("taxi:manufacturer-list"))
+
+    def test_delete_manufacturer(self):
+        """
+        Test checks:
+         - is on the right url;
+         - is right template used;
+         - is right redirect page;
+         - is new manufacturer in db;
+         - is deleted manufacturer from db.
+         - is status code is 302;
+         - is right ulr in response after post method.
+
+        """
+        Manufacturer.objects.create(
+            name="Test Manufacturer",
+            country="Test Country"
+        )
+        manufacturer = Manufacturer.objects.get(id=1)
+        res = self.client.get(
+            reverse(
+                "taxi:manufacturer-delete",
+                kwargs={"pk": manufacturer.id}
+            )
+        )
+        self.assertEqual(
+            res.context["request"].path_info,
+            reverse(
+                "taxi:manufacturer-delete",
+                kwargs={"pk": manufacturer.id}
+            )
+        )
+        self.assertTemplateUsed(
+            res,
+            "taxi/manufacturer_confirm_delete.html"
+        )
+        self.assertTrue(manufacturer in Manufacturer.objects.all())
+        res = self.client.post(
+            reverse(
+                "taxi:manufacturer-delete",
+                kwargs={"pk": manufacturer.id}
+            )
+        )
+        self.assertFalse(manufacturer in Manufacturer.objects.all())
+        self.assertEqual(res.status_code, 302)
+        self.assertEqual(res.url, reverse("taxi:manufacturer-list"))
