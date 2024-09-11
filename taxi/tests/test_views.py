@@ -69,11 +69,11 @@ class PrivetManufacturerTest(TestCase):
         self.assertEqual(manufacturers, response_manufacturers)
         self.assertTemplateUsed(response, "taxi/manufacturer_list.html")
 
-    def test_is_contain_search_form(self):
-        response = self.client.get(MANUFACTURER_URL)
-        self.assertIn("search_form", response.context)
-
     def test_search_form(self):
+        """
+        Test checking:
+        - Is page contain search form;
+        """
         test_keys = {1: "", 2: "Audi", 3: "BMW", 4: "w"}
         Manufacturer.objects.create(name="Audi", country="Germany")
         Manufacturer.objects.create(name="BMW", country="Germany")
@@ -81,6 +81,7 @@ class PrivetManufacturerTest(TestCase):
         manufacturers = Manufacturer.objects.all()
 
         response = self.client.get(MANUFACTURER_URL, {"manufacturer": test_keys[1]})
+        self.assertIn("search_form", response.context)
         search_value_key = response.context_data["search_form"]["manufacturer"].value()
         db_q = manufacturers.filter(name__icontains=test_keys[1])
         self.assertEqual(search_value_key, test_keys[1])
@@ -97,7 +98,7 @@ class PrivetManufacturerTest(TestCase):
                 self.assertEqual(search_value_key, value)
                 self.assertQuerysetEqual(db_q, response.context_data["object_list"])
 
-    def test_is_contain_paginator(self):
+    def test_is_page_contain_paginator(self):
         res = self.client.get(MANUFACTURER_URL)
         self.assertIn("paginator", res.context)
 
@@ -186,38 +187,39 @@ class PrivetManufacturerTest(TestCase):
                 db_q[pagination_per_page: pagination_per_page * 2],
             )
 
-    def test_is_contain_create_button(self):
+    def test_create_button(self):
+        """
+        Test checking:
+        - The page has Create button;
+        - The Create button has right url/
+        """
         res = self.client.get(MANUFACTURER_URL)
         self.assertContains(res, "Create")
-
-    def test_is_create_button_has_right_url(self):
-        res = self.client.get(MANUFACTURER_URL)
         self.assertContains(
             res,
             reverse("taxi:manufacturer-create"), html=False
         )
 
-    def test_is_manufacturer_has_create_link(self):
+    def test_is_manufacturer_row_has_links(self):
+        """
+        Test that checking if a manufacturer has:
+        - create link;
+        - delete link.
+        """
         Manufacturer.objects.create(
             name="Test Manufacturer",
             country="Test country"
         )
         res = self.client.get(MANUFACTURER_URL)
-        manufacturer = Manufacturer.objects.get(name="Test Manufacturer")
+        manufacturer = Manufacturer.objects.get(
+            name="Test Manufacturer"
+        )
         self.assertContains(
             res,
             reverse(
                 "taxi:manufacturer-update", kwargs={"pk": manufacturer.id}
             )
         )
-
-    def test_is_manufacturer_has_delete_link(self):
-        Manufacturer.objects.create(
-            name="Test Manufacturer",
-            country="Test country"
-        )
-        res = self.client.get(MANUFACTURER_URL)
-        manufacturer = Manufacturer.objects.get(name="Test Manufacturer")
         self.assertContains(
             res,
             reverse(
@@ -226,6 +228,12 @@ class PrivetManufacturerTest(TestCase):
         )
 
     def test_update_manufacturer_is_fields_filled(self):
+        """
+        The test checking:
+        - Is fields filled (html page contains, form initial contains);
+        - Is right template used;
+        - Is right page label;
+        """
         Manufacturer.objects.create(
             name="Test Manufacturer",
             country="Test Country"
@@ -247,33 +255,7 @@ class PrivetManufacturerTest(TestCase):
                 "country": manufacturer.country
             }
         )
-
-    def test_update_manufacturer_is_write_template(self):
-        Manufacturer.objects.create(
-            name="Test Manufacturer",
-            country="Test Country"
-        )
-        manufacturer = Manufacturer.objects.get(id=1)
-        res = self.client.get(
-            reverse(
-                "taxi:manufacturer-update",
-                kwargs={"pk": manufacturer.id}
-            )
-        )
         self.assertTemplateUsed(res, "taxi/manufacturer_form.html")
-
-    def test_update_manufacturer_is_right_page_label(self):
-        Manufacturer.objects.create(
-            name="Test Manufacturer",
-            country="Test Country"
-        )
-        manufacturer = Manufacturer.objects.get(id=1)
-        res = self.client.get(
-            reverse(
-                "taxi:manufacturer-update",
-                kwargs={"pk": manufacturer.id}
-            )
-        )
         self.assertContains(res, "Update manufacturer")
 
     def test_update_manufacturer_by_name_and_country(self):
