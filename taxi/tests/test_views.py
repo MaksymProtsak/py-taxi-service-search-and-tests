@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 from django.urls import reverse
 
-from taxi.models import Manufacturer, Car
+from taxi.models import Manufacturer, Car, Driver
 
 HOME_PAGE = reverse("taxi:index")
 MANUFACTURER_URL = reverse("taxi:manufacturer-list")
@@ -322,12 +322,12 @@ class PrivetCarTest(TestCase):
             name="Test Manufacturer 1",
             country="Test Country",
         )
-        Manufacturer.objects.create(
-            name="Test Manufacturer 2",
-            country="Test Country 2",
-        )
         response = self.client.get(CAR_URL)
-        cars = list(Car.objects.all())
+        manufacturer = Manufacturer.objects.get(id=1)
+        current_driver = Driver.objects.get(id=1)
+        new_car = Car.objects.create(model="Audi", manufacturer=manufacturer)
+        new_car.drivers.add(current_driver)
+        new_car.save()
         # response_manufacturers = list(response.context["manufacturer_list"])
         # self.assertEqual(response.status_code, 200)
         # self.assertEqual(manufacturers, response_manufacturers)
