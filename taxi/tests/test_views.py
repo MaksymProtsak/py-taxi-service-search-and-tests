@@ -2,12 +2,11 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 from django.urls import reverse
 
-from taxi.models import Manufacturer
-from taxi_service.settings import INTERNAL_IPS
-from django.core.management.commands.runserver import Command
+from taxi.models import Manufacturer, Car
 
 HOME_PAGE = reverse("taxi:index")
 MANUFACTURER_URL = reverse("taxi:manufacturer-list")
+CAR_URL = reverse("taxi:car-list")
 
 
 class PublicHomePageTest(TestCase):
@@ -70,10 +69,6 @@ class PrivetManufacturerTest(TestCase):
         self.assertTemplateUsed(response, "taxi/manufacturer_list.html")
 
     def test_search_form(self):
-        """
-        Test checking:
-        - Is page contain search form;
-        """
         test_keys = {1: "", 2: "Audi", 3: "BMW", 4: "w"}
         Manufacturer.objects.create(name="Audi", country="Germany")
         Manufacturer.objects.create(name="BMW", country="Germany")
@@ -106,24 +101,17 @@ class PrivetManufacturerTest(TestCase):
         test_keys = {1: False, 2: False, 3: True}
         res = self.client.get(MANUFACTURER_URL)
         pagination_per_page = res.context_data["paginator"].per_page
-
         self.assertFalse(res.context_data["is_paginated"], test_keys[1])
-
         for i in range(pagination_per_page):
             Manufacturer.objects.create(
                 name=f"Test manufacturer {i}", country=f"Test country {i}"
             )
-
         res = self.client.get(MANUFACTURER_URL)
-
         self.assertFalse(res.context_data["is_paginated"], test_keys[2])
-
         Manufacturer.objects.create(
             name=f"Test manufacturer {i + 1}", country=f"Test country {i + 1}"
         )
-
         res = self.client.get(MANUFACTURER_URL)
-
         self.assertTrue(res.context_data["is_paginated"], test_keys[3])
 
     def test_is_pagination_disappears(self):
@@ -137,12 +125,9 @@ class PrivetManufacturerTest(TestCase):
             )
 
         res = self.client.get(MANUFACTURER_URL)
-
         self.assertTrue(res.context_data["is_paginated"], test_keys[1])
-
         Manufacturer.objects.get(id=1).delete()
         res = self.client.get(MANUFACTURER_URL)
-
         self.assertFalse(res.context_data["is_paginated"], test_keys[2])
 
     def test_next_page_pagination_with_save_qwery_param(self):
@@ -227,12 +212,15 @@ class PrivetManufacturerTest(TestCase):
             )
         )
 
-    def test_update_manufacturer_is_fields_filled(self):
+    def test_update_manufacturer(self):
         """
-        The test checking:
+        Test checks:
         - Is fields filled (html page contains, form initial contains);
         - Is right template used;
         - Is right page label;
+        - Is manufacturer has new name and country;
+        - Is redirect after update manufacturer;
+        - Is right redirect page after redirect.
         """
         Manufacturer.objects.create(
             name="Test Manufacturer",
@@ -257,19 +245,6 @@ class PrivetManufacturerTest(TestCase):
         )
         self.assertTemplateUsed(res, "taxi/manufacturer_form.html")
         self.assertContains(res, "Update manufacturer")
-
-    def test_update_manufacturer_by_name_and_country(self):
-        Manufacturer.objects.create(
-            name="Test Manufacturer",
-            country="Test Country"
-        )
-        manufacturer = Manufacturer.objects.get(id=1)
-        res = self.client.get(
-            reverse(
-                "taxi:manufacturer-update",
-                kwargs={"pk": manufacturer.id}
-            )
-        )
         res.context["form"].initial["name"] = "Audi"
         res.context["form"].initial["country"] = "Deutschland"
         self.client.post(
@@ -280,49 +255,7 @@ class PrivetManufacturerTest(TestCase):
             res.context["form"].initial
         )
         self.assertEqual(manufacturer, Manufacturer.objects.get(id=1))
-
-    def test_update_manufacturer_is_redirect(self):
-        Manufacturer.objects.create(
-            name="Test Manufacturer",
-            country="Test Country"
-        )
-        manufacturer = Manufacturer.objects.get(id=1)
-        res = self.client.get(
-            reverse(
-                "taxi:manufacturer-update",
-                kwargs={"pk": manufacturer.id}
-            )
-        )
-        res = self.client.post(
-            reverse(
-                "taxi:manufacturer-update",
-                kwargs={"pk": manufacturer.id}
-            ),
-            res.context["form"].initial
-        )
-        self.assertEqual(manufacturer, Manufacturer.objects.get(id=1))
         self.assertEqual(res.status_code, 302)
-
-    def test_update_manufacturer_is_right_redirect_page(self):
-        Manufacturer.objects.create(
-            name="Test Manufacturer",
-            country="Test Country"
-        )
-        manufacturer = Manufacturer.objects.get(id=1)
-        res = self.client.get(
-            reverse(
-                "taxi:manufacturer-update",
-                kwargs={"pk": manufacturer.id}
-            )
-        )
-        res = self.client.post(
-            reverse(
-                "taxi:manufacturer-update",
-                kwargs={"pk": manufacturer.id}
-            ),
-            res.context["form"].initial
-        )
-        self.assertEqual(manufacturer, Manufacturer.objects.get(id=1))
         self.assertEqual(res.url, reverse("taxi:manufacturer-list"))
 
     def test_delete_manufacturer(self):
@@ -369,3 +302,33 @@ class PrivetManufacturerTest(TestCase):
         self.assertFalse(manufacturer in Manufacturer.objects.all())
         self.assertEqual(res.status_code, 302)
         self.assertEqual(res.url, reverse("taxi:manufacturer-list"))
+
+
+class PublicCarTest(TestCase):
+    def test_login_required(self):
+        res = self.client.get(MANUFACTURER_URL)
+        self.assertNotEqual(res.status_code, 200)
+
+
+class PrivetCarTest(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="test.user", license_number="AAA123456", password="TestPassword123"
+        )
+        self.client.force_login(self.user)
+
+    def test_retrieve_cars(self):
+        Manufacturer.objects.create(
+            name="Test Manufacturer 1",
+            country="Test Country",
+        )
+        Manufacturer.objects.create(
+            name="Test Manufacturer 2",
+            country="Test Country 2",
+        )
+        response = self.client.get(CAR_URL)
+        cars = list(Car.objects.all())
+        # response_manufacturers = list(response.context["manufacturer_list"])
+        # self.assertEqual(response.status_code, 200)
+        # self.assertEqual(manufacturers, response_manufacturers)
+        # self.assertTemplateUsed(response, "taxi/manufacturer_list.html")
