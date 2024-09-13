@@ -45,7 +45,7 @@ class PublicManufacturerTest(TestCase):
         self.assertNotEqual(res.status_code, 200)
 
 
-class PrivetManufacturerTest(TestCase):
+class PrivateManufacturerTest(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
             username="test.user", license_number="AAA123456", password="TestPassword123"
@@ -318,17 +318,49 @@ class PrivetCarTest(TestCase):
         self.client.force_login(self.user)
 
     def test_retrieve_cars(self):
-        Manufacturer.objects.create(
-            name="Test Manufacturer 1",
-            country="Test Country",
-        )
-        response = self.client.get(CAR_URL)
-        manufacturer = Manufacturer.objects.get(id=1)
+        """
+        The test checking:
+        - Is status_code equal 200;
+        - Is retrieve cars;
+        - Is right page template.
+        """
+        manufacturers = {
+            "Toyota": "Japan",
+            "BMW": "Germany",
+            "Ford": "USA",
+            "Hyundai": "South Korea",
+            "Ferrari": "Italy",
+            "Renault": "France",
+            "Volvo": "Sweden",
+            "Volkswagen": "Germany",
+            "Kia": "South Korea",
+            "Chevrolet": "USA",
+        }
+        models = {
+            "Toyota": "Corolla",
+            "BMW": "320i",
+            "Ford": "Mustang",
+            "Hyundai": "Elantra",
+            "Ferrari": "488 GTB",
+            "Renault": "Clio",
+            "Volvo": "XC90",
+            "Volkswagen": "Golf",
+            "Kia": "Sportage",
+            "Chevrolet": "Camaro"
+        }
+
         current_driver = Driver.objects.get(id=1)
-        new_car = Car.objects.create(model="Audi", manufacturer=manufacturer)
-        new_car.drivers.add(current_driver)
-        new_car.save()
-        # response_manufacturers = list(response.context["manufacturer_list"])
-        # self.assertEqual(response.status_code, 200)
-        # self.assertEqual(manufacturers, response_manufacturers)
-        # self.assertTemplateUsed(response, "taxi/manufacturer_list.html")
+
+        for manufacturer, country in manufacturers.items():
+            Manufacturer.objects.create(name=manufacturer, country=country)
+
+            manufacturer_db = Manufacturer.objects.get(name=manufacturer)
+            new_car = Car.objects.create(model=models[manufacturer], manufacturer=manufacturer_db)
+            new_car.drivers.add(current_driver)
+            new_car.save()
+        response = self.client.get(CAR_URL)
+        paginator_per_page = response.context_data["paginator"].per_page
+        response_cars = list(response.context["car_list"])
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(list(Car.objects.all()[:paginator_per_page]), response_cars)
+        self.assertTemplateUsed(response, "taxi/car_list.html")
