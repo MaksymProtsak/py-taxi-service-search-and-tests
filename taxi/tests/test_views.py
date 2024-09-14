@@ -313,7 +313,9 @@ class PublicCarTest(TestCase):
 class PrivetCarTest(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
-            username="test.user", license_number="AAA123456", password="TestPassword123"
+            username="test.user",
+            license_number="AAA123456",
+            password="TestPassword123"
         )
         self.client.force_login(self.user)
 
@@ -322,8 +324,13 @@ class PrivetCarTest(TestCase):
         The test checking:
         - Is status_code equal 200;
         - Is retrieve cars;
-        - Is right page template.
+        - Is right page template;
+        - Is the page has search form;
+        - Is search value has default value '';
+        - Is right query on the first page with default value;
+        - Is right queries with different value;
         """
+        test_keys = {1: "", 2: "Corolla", 3: "XC90", 4: "o"}
         manufacturers = {
             "Toyota": "Japan",
             "BMW": "Germany",
@@ -350,17 +357,44 @@ class PrivetCarTest(TestCase):
         }
 
         current_driver = Driver.objects.get(id=1)
+        cars = Car.objects.all()
 
         for manufacturer, country in manufacturers.items():
             Manufacturer.objects.create(name=manufacturer, country=country)
-
             manufacturer_db = Manufacturer.objects.get(name=manufacturer)
-            new_car = Car.objects.create(model=models[manufacturer], manufacturer=manufacturer_db)
+            new_car = Car.objects.create(
+                model=models[manufacturer],
+                manufacturer=manufacturer_db
+            )
             new_car.drivers.add(current_driver)
             new_car.save()
         response = self.client.get(CAR_URL)
         paginator_per_page = response.context_data["paginator"].per_page
         response_cars = list(response.context["car_list"])
+        search_value_key = response.context_data["search_form"]["model"].value()
+        db_q = cars.filter(model__icontains=test_keys[1])[:paginator_per_page]
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(list(Car.objects.all()[:paginator_per_page]), response_cars)
+        self.assertEqual(
+            list(Car.objects.all()[:paginator_per_page]),
+            response_cars
+        )
         self.assertTemplateUsed(response, "taxi/car_list.html")
+        self.assertIn("search_form", response.context)
+        self.assertEqual(search_value_key, test_keys[1])
+        self.assertEqual(
+            list(db_q),
+            list(response.context_data["object_list"])
+        )
+
+        for key, value in test_keys.items():
+            if key != 1:
+                response = self.client.get(CAR_URL, {"model": value})
+                search_value_key = response.context_data["search_form"][
+                    "model"
+                ].value()
+                db_q = cars.filter(model__icontains=value)
+                self.assertNotEqual(search_value_key, test_keys[key - 1])
+                self.assertEqual(search_value_key, value)
+                self.assertEqual(
+                    list(db_q), list(response.context_data["object_list"])
+                )
