@@ -319,7 +319,7 @@ class PrivetCarTest(TestCase):
         )
         self.client.force_login(self.user)
 
-    def test_retrieve_cars(self):
+    def test_cars(self):
         """
         The test checking:
         - Is status_code equal 200;
@@ -329,6 +329,7 @@ class PrivetCarTest(TestCase):
         - Is search value has default value '';
         - Is right query on the first page with default value;
         - Is right queries with different value;
+        - Is the page has a paginator;
         """
         test_keys = {1: "", 2: "Corolla", 3: "XC90", 4: "o"}
         manufacturers = {
@@ -370,13 +371,12 @@ class PrivetCarTest(TestCase):
             new_car.save()
         response = self.client.get(CAR_URL)
         paginator_per_page = response.context_data["paginator"].per_page
-        response_cars = list(response.context["car_list"])
         search_value_key = response.context_data["search_form"]["model"].value()
         db_q = cars.filter(model__icontains=test_keys[1])[:paginator_per_page]
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             list(Car.objects.all()[:paginator_per_page]),
-            response_cars
+            list(response.context["car_list"])
         )
         self.assertTemplateUsed(response, "taxi/car_list.html")
         self.assertIn("search_form", response.context)
@@ -398,3 +398,6 @@ class PrivetCarTest(TestCase):
                 self.assertEqual(
                     list(db_q), list(response.context_data["object_list"])
                 )
+
+        self.assertIn("paginator", response.context)
+        breakpoint()
