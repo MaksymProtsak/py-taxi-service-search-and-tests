@@ -333,6 +333,7 @@ class PrivetCarTest(TestCase):
         - Is pagination disappears;
         - Test page has a Create button;
         - The Create button has right url;
+        - Is car row has link of the car;
         """
         test_keys = {1: "", 2: "Corolla", 3: "XC90", 4: "o"}
         test_keys_paginator = {1: True, 2: False}
@@ -418,4 +419,11 @@ class PrivetCarTest(TestCase):
         self.assertContains(
             response,
             reverse("taxi:car-create"), html=False
+        )
+        self.assertContains(
+            response,
+            reverse(
+                "taxi:car-detail",
+                kwargs={"pk": response.context["object_list"][0].id}
+            )
         )
