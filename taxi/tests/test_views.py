@@ -175,8 +175,8 @@ class PrivateManufacturerTest(TestCase):
     def test_create_button(self):
         """
         Test checking:
-        - The page has Create button;
-        - The Create button has right url/
+        - The page has a Create button;
+        - The Create button has right url;
         """
         res = self.client.get(MANUFACTURER_URL)
         self.assertContains(res, "Create")
@@ -330,8 +330,12 @@ class PrivetCarTest(TestCase):
         - Is right query on the first page with default value;
         - Is right queries with different value;
         - Is the page has a paginator;
+        - Is pagination disappears;
+        - Test page has a Create button;
+        - The Create button has right url;
         """
         test_keys = {1: "", 2: "Corolla", 3: "XC90", 4: "o"}
+        test_keys_paginator = {1: True, 2: False}
         manufacturers = {
             "Toyota": "Japan",
             "BMW": "Germany",
@@ -399,5 +403,19 @@ class PrivetCarTest(TestCase):
                     list(db_q), list(response.context_data["object_list"])
                 )
 
-        self.assertIn("paginator", response.context)
-        breakpoint()
+        response = self.client.get(CAR_URL)
+        self.assertIn("paginator", response.context, )
+        self.assertTrue(
+            response.context_data["is_paginated"],
+            test_keys_paginator[1]
+        )
+        response = self.client.get(CAR_URL, {"model": "Camaro"})
+        self.assertFalse(
+            response.context_data["is_paginated"],
+            test_keys_paginator[2]
+        )
+        self.assertContains(response, "Create")
+        self.assertContains(
+            response,
+            reverse("taxi:car-create"), html=False
+        )
