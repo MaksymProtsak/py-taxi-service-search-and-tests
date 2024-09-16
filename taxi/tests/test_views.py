@@ -6,7 +6,8 @@ from taxi.models import Manufacturer, Car, Driver
 
 HOME_PAGE = reverse("taxi:index")
 MANUFACTURER_URL = reverse("taxi:manufacturer-list")
-CAR_URL = reverse("taxi:car-list")
+CAR_LIST_URL = reverse("taxi:car-list")
+CAR_DETAIL_URL = reverse("taxi:car-detail", kwargs={"pk": 1})
 
 
 class PublicHomePageTest(TestCase):
@@ -374,7 +375,7 @@ class PrivetCarTest(TestCase):
             )
             new_car.drivers.add(current_driver)
             new_car.save()
-        response = self.client.get(CAR_URL)
+        response = self.client.get(CAR_LIST_URL)
         paginator_per_page = response.context_data["paginator"].per_page
         search_value_key = response.context_data["search_form"]["model"].value()
         db_q = cars.filter(model__icontains=test_keys[1])[:paginator_per_page]
@@ -393,7 +394,7 @@ class PrivetCarTest(TestCase):
 
         for key, value in test_keys.items():
             if key != 1:
-                response = self.client.get(CAR_URL, {"model": value})
+                response = self.client.get(CAR_LIST_URL, {"model": value})
                 search_value_key = response.context_data["search_form"][
                     "model"
                 ].value()
@@ -404,13 +405,13 @@ class PrivetCarTest(TestCase):
                     list(db_q), list(response.context_data["object_list"])
                 )
 
-        response = self.client.get(CAR_URL)
+        response = self.client.get(CAR_LIST_URL)
         self.assertIn("paginator", response.context, )
         self.assertTrue(
             response.context_data["is_paginated"],
             test_keys_paginator[1]
         )
-        response = self.client.get(CAR_URL, {"model": "Camaro"})
+        response = self.client.get(CAR_LIST_URL, {"model": "Camaro"})
         self.assertFalse(
             response.context_data["is_paginated"],
             test_keys_paginator[2]
@@ -427,3 +428,54 @@ class PrivetCarTest(TestCase):
                 kwargs={"pk": response.context["object_list"][0].id}
             )
         )
+
+    def test_update_car(self):
+        """
+        The test checking:
+        - Is status_code equal 200;
+        - If the page has Update button;
+        - The Update button has right url;
+        - If the page has Delete button;
+        - The Delete button has right url;
+        - If the page has 'Assign me to this car' button;
+        - Is right page status with redirect request;
+        - Text in button change from 'Assign me to this car'
+          to 'Delete me from this car';
+        """
+        manufacturers = {
+            "name": "Toyota",
+            "country": "Japan",
+        }
+        models = {
+            "model": "Corolla",
+        }
+        db_manufacturer = Manufacturer.objects.create(
+            name=manufacturers["name"],
+            country=manufacturers["country"]
+        )
+        db_car = Car.objects.create(
+            model=models["model"],
+            manufacturer=db_manufacturer
+        )
+        response = self.client.get(CAR_DETAIL_URL)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Update")
+        self.assertContains(
+            response,
+            reverse("taxi:car-update", kwargs={"pk": db_car.id})
+        )
+        self.assertContains(response, "Delete")
+        self.assertContains(
+            response,
+            reverse("taxi:car-delete", kwargs={"pk": db_car.id})
+        )
+        self.assertContains(response, "Assign me to this car")
+        response = self.client.get(
+            reverse(
+                "taxi:toggle-car-assign", kwargs={"pk": db_car.id}
+            )
+        )
+        self.assertEqual(response.status_code, 302)
+        response = self.client.get(response.url)
+        self.assertContains(response, "Delete me from this car")
+
