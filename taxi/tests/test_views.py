@@ -444,6 +444,7 @@ class PrivetCarTest(TestCase):
           to 'Delete me from this car';
         - Car update form has a right template;
         - Is page label has 'Update car';
+        - Check the initial data after assign driver;
         """
         manufacturers = {
             "name": "Toyota",
@@ -451,6 +452,14 @@ class PrivetCarTest(TestCase):
         }
         models = {
             "model": "Corolla",
+        }
+        initial_update_keys = {
+            1: {
+                "drivers": [Driver.objects.get(username="test.user")],
+                "model": models["model"],
+                "manufacturer": 1,
+                "id": 1,
+            }
         }
         db_manufacturer = Manufacturer.objects.create(
             name=manufacturers["name"],
@@ -488,4 +497,4 @@ class PrivetCarTest(TestCase):
         )
         self.assertTemplateUsed(response, "taxi/car_form.html")
         self.assertContains(response, "Update car")
-        breakpoint()
+        self.assertEqual(response.context_data["form"].initial, initial_update_keys[1])
