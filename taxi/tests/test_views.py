@@ -7,7 +7,6 @@ from taxi.models import Manufacturer, Car, Driver
 HOME_PAGE = reverse("taxi:index")
 MANUFACTURER_URL = reverse("taxi:manufacturer-list")
 CAR_LIST_URL = reverse("taxi:car-list")
-CAR_DETAIL_URL = reverse("taxi:car-detail", kwargs={"pk": 1})
 
 
 class PublicHomePageTest(TestCase):
@@ -437,10 +436,14 @@ class PrivetCarTest(TestCase):
         - The Update button has right url;
         - If the page has Delete button;
         - The Delete button has right url;
+        - Check the logged user is absence in list of drivers;
         - If the page has 'Assign me to this car' button;
         - Is right page status with redirect request;
+        - Check the logged user in list of drivers;
         - Text in button change from 'Assign me to this car'
           to 'Delete me from this car';
+        - Car update form has a right template;
+        - Is page label has 'Update car';
         """
         manufacturers = {
             "name": "Toyota",
@@ -457,7 +460,7 @@ class PrivetCarTest(TestCase):
             model=models["model"],
             manufacturer=db_manufacturer
         )
-        response = self.client.get(CAR_DETAIL_URL)
+        response = self.client.get(reverse("taxi:car-detail", kwargs={"pk": 1}))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Update")
         self.assertContains(
@@ -469,6 +472,7 @@ class PrivetCarTest(TestCase):
             response,
             reverse("taxi:car-delete", kwargs={"pk": db_car.id})
         )
+        self.assertNotContains(response, response.context["user"].__str__())
         self.assertContains(response, "Assign me to this car")
         response = self.client.get(
             reverse(
@@ -477,5 +481,11 @@ class PrivetCarTest(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         response = self.client.get(response.url)
+        self.assertContains(response, response.context["user"].__str__())
         self.assertContains(response, "Delete me from this car")
-
+        response = self.client.get(
+            reverse("taxi:car-update", kwargs={"pk": db_car.id})
+        )
+        self.assertTemplateUsed(response, "taxi/car_form.html")
+        self.assertContains(response, "Update car")
+        breakpoint()
