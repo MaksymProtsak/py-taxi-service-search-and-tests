@@ -445,28 +445,38 @@ class PrivetCarTest(TestCase):
         - Car update form has a right template;
         - Is page label has 'Update car';
         - Check the initial data after assign driver;
+        - Check page status after update data about car;
+        - Is right redirect page after update data about car;
+        - Is right car model name on car list page;
         """
         manufacturers = {
             "name": "Toyota",
             "country": "Japan",
         }
         models = {
-            "model": "Corolla",
+            1: "Corolla",
+            2: "Supra",
         }
         initial_update_keys = {
             1: {
                 "drivers": [Driver.objects.get(username="test.user")],
-                "model": models["model"],
+                "model": models[1],
                 "manufacturer": 1,
                 "id": 1,
-            }
+            },
+            2: {
+                "drivers": [Driver.objects.get(username="test.user")],
+                "model": "Supra",
+                "manufacturer": 1,
+                "id": 1,
+            },
         }
         db_manufacturer = Manufacturer.objects.create(
             name=manufacturers["name"],
             country=manufacturers["country"]
         )
         db_car = Car.objects.create(
-            model=models["model"],
+            model=models[1],
             manufacturer=db_manufacturer
         )
         response = self.client.get(reverse("taxi:car-detail", kwargs={"pk": 1}))
@@ -497,4 +507,33 @@ class PrivetCarTest(TestCase):
         )
         self.assertTemplateUsed(response, "taxi/car_form.html")
         self.assertContains(response, "Update car")
-        self.assertEqual(response.context_data["form"].initial, initial_update_keys[1])
+        self.assertEqual(
+            response.context_data["form"].initial,
+            initial_update_keys[1]
+        )
+
+        response = self.client.post(
+            reverse(
+                "taxi:car-update",
+                kwargs={"pk": db_car.id}
+            ),
+            {
+                "model": models[2],
+                "manufacturer": db_car.id,
+                "drivers": db_car.drivers.values_list('id', flat=True),
+            }
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("taxi:car-list"))
+        response = self.client.get(response.url)
+        self.assertContains(response, models[2])
+        get_user_model().objects.create_user(
+            username="test.user2",
+            license_number="AAA000000",
+            password="TestPassword123"
+        )
+        response = self.client.get(
+            reverse("taxi:car-update", kwargs={"pk": db_car.id})
+        )
+        breakpoint()
+
