@@ -428,7 +428,7 @@ class PrivetCarTest(TestCase):
             )
         )
 
-    def test_update_car(self):
+    def test_detail_car(self):
         """
         The test checking:
         - Is status_code equal 200;
@@ -448,6 +448,12 @@ class PrivetCarTest(TestCase):
         - Check page status after update data about car;
         - Is right redirect page after update data about car;
         - Is right car model name on car list page;
+        - Is right drivers use the car;
+        - Is initial drivers changed after post method with all drivers;
+        - Is car delete page has a right template;
+        - Is post method has a redirect status_code;
+        - Is post method has right redirect url;
+        - Is car deleted after post method;
         """
         manufacturers = {
             "name": "Toyota",
@@ -535,5 +541,39 @@ class PrivetCarTest(TestCase):
         response = self.client.get(
             reverse("taxi:car-update", kwargs={"pk": db_car.id})
         )
-        breakpoint()
-
+        ds_in_initial_form = response.context["form"].initial["drivers"]
+        ds_in_checkbox_list = list(
+            response.context["form"].fields["drivers"].queryset
+        )
+        self.assertNotEqual(ds_in_initial_form, ds_in_checkbox_list)
+        drivers_ids = list(Driver.objects.all().values_list("id", flat=True))
+        self.client.post(
+            reverse(
+                "taxi:car-update",
+                kwargs={"pk": db_car.id}
+            ),
+            {
+                "model": models[2],
+                "manufacturer": db_car.id,
+                "drivers": drivers_ids,
+            }
+        )
+        response = self.client.get(
+            reverse("taxi:car-update", kwargs={"pk": db_car.id})
+        )
+        self.assertEqual(
+            response.context["form"].initial["drivers"],
+            ds_in_checkbox_list
+        )
+        response = self.client.get(
+            reverse("taxi:car-delete", kwargs={"pk": db_car.id})
+        )
+        self.assertTemplateUsed(
+            response, "taxi/car_confirm_delete.html"
+        )
+        response = self.client.post(
+            reverse("taxi:car-delete", kwargs={"pk": db_car.id})
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("taxi:car-list"))
+        self.assertEqual(Car.objects.all().count(), 0)
