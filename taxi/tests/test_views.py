@@ -577,3 +577,36 @@ class PrivetCarTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse("taxi:car-list"))
         self.assertEqual(Car.objects.all().count(), 0)
+
+    def test_car_create(self):
+        """
+        Test checks:
+        - Is the page has right template;
+        - Is post request has status_code 302;
+        - Is response has right redirect url;
+        - Is the car created successfully;
+        """
+        models = {
+            1: "Celika",
+        }
+        manufacturers = {
+            "name": "Toyota",
+            "country": "Japan",
+        }
+        db_manufacturer = Manufacturer.objects.create(
+            name=manufacturers["name"],
+            country=manufacturers["country"]
+        )
+        response = self.client.get(reverse("taxi:car-create"))
+        self.assertTemplateUsed(response, "taxi/car_form.html")
+        response = self.client.post(
+            reverse("taxi:car-create"),
+            {
+                "model": models[1],
+                "drivers": self.user.id,
+                "manufacturer": db_manufacturer.id
+            }
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("taxi:car-list"))
+        self.assertTrue(Car.objects.filter(model__icontains=models[1]))
