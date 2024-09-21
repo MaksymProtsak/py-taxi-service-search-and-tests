@@ -760,8 +760,8 @@ class PrivateDriverTest(TestCase):
         - Is status_code equal to 200;
         - If the page has 'Update license number' button;
         - The 'Update license number' button has right url;
-        >- If the page has Delete button;
-        >- The Delete button has right url;
+        - If the page has Delete button;
+        - The Delete button has right url;
         """
         response = self.client.get(
             reverse("taxi:driver-detail", kwargs={"pk": 1})
@@ -771,4 +771,9 @@ class PrivateDriverTest(TestCase):
         self.assertContains(
             response,
             reverse("taxi:driver-update", kwargs={"pk": self.user.id})
+        )
+        self.assertContains(response, "Delete")
+        self.assertContains(
+            response,
+            reverse("taxi:driver-delete", kwargs={"pk": self.user.id})
         )
