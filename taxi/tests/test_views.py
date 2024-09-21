@@ -486,7 +486,9 @@ class PrivateCarTest(TestCase):
             model=models[1],
             manufacturer=db_manufacturer
         )
-        response = self.client.get(reverse("taxi:car-detail", kwargs={"pk": 1}))
+        response = self.client.get(
+            reverse("taxi:car-detail", kwargs={"pk": 1})
+        )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Update")
         self.assertContains(
@@ -750,4 +752,23 @@ class PrivateDriverTest(TestCase):
                 "taxi:driver-detail",
                 kwargs={"pk": response.context["object_list"][0].id}
             )
+        )
+
+    def test_detail_driver(self):
+        """
+        The test checking:
+        - Is status_code equal to 200;
+        - If the page has 'Update license number' button;
+        - The 'Update license number' button has right url;
+        >- If the page has Delete button;
+        >- The Delete button has right url;
+        """
+        response = self.client.get(
+            reverse("taxi:driver-detail", kwargs={"pk": 1})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Update license number")
+        self.assertContains(
+            response,
+            reverse("taxi:driver-update", kwargs={"pk": self.user.id})
         )
