@@ -7,6 +7,7 @@ from taxi.models import Manufacturer, Car, Driver
 HOME_PAGE = reverse("taxi:index")
 MANUFACTURER_URL = reverse("taxi:manufacturer-list")
 CAR_LIST_URL = reverse("taxi:car-list")
+DRIVER_LIST_URL = reverse("taxi:driver-list")
 
 
 class PublicHomePageTest(TestCase):
@@ -310,7 +311,7 @@ class PublicCarTest(TestCase):
         self.assertNotEqual(res.status_code, 200)
 
 
-class PrivetCarTest(TestCase):
+class PrivateCarTest(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
             username="test.user",
@@ -610,3 +611,143 @@ class PrivetCarTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse("taxi:car-list"))
         self.assertTrue(Car.objects.filter(model__icontains=models[1]))
+
+
+class PublicDriverTest(TestCase):
+    def test_login_required(self):
+        res = self.client.get(DRIVER_LIST_URL)
+        self.assertNotEqual(res.status_code, 200)
+
+
+class PrivateDriverTest(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="test.user",
+            license_number="AAA000000",
+            password="TestPassword123"
+        )
+        self.client.force_login(self.user)
+
+    def test_drivers(self):
+        """
+        The test checking:
+        - Is status_code equal 200;
+        - Is right page template;
+        - Is the page has search form;
+        - Is search value has default value '';
+        - Is right query on the first page with default value;
+        - Is right queries with different value;
+        - Test page has a Create button;
+        - The Create button has right url;
+        - Is driver row has link of the driver;
+        """
+        test_keys = {1: "", 2: "user", 3: "user.00", 4: "1"}
+        drivers = [
+            {
+                "username": "user.001",
+                "first_name": "Maksym",
+                "last_name": "Protsak",
+                "license_number": "AAA123456"
+            },
+            {
+                "username": "user.002",
+                "first_name": "Ivan",
+                "last_name": "Petrenko",
+                "license_number": "BBB654321"
+            },
+            {
+                "username": "user.003",
+                "first_name": "Oleh",
+                "last_name": "Ivanenko",
+                "license_number": "CCC987654"
+            },
+            {
+                "username": "user.004",
+                "first_name": "Serhii",
+                "last_name": "Kovalenko",
+                "license_number": "DDD321654"
+            },
+            {
+                "username": "user.005",
+                "first_name": "Andrii",
+                "last_name": "Shevchenko",
+                "license_number": "EEE123789"
+            },
+            {
+                "username": "user.006",
+                "first_name": "Oleksandr",
+                "last_name": "Bondarenko",
+                "license_number": "FFF456789"
+            },
+            {
+                "username": "user.007",
+                "first_name": "Dmytro",
+                "last_name": "Shapoval",
+                "license_number": "GGG654987"
+            },
+            {
+                "username": "user.008",
+                "first_name": "Volodymyr",
+                "last_name": "Tkachenko",
+                "license_number": "HHH789456"
+            },
+            {
+                "username": "user.009",
+                "first_name": "Yurii",
+                "last_name": "Kryvyi",
+                "license_number": "III987321"
+            },
+            {
+                "username": "user.010",
+                "first_name": "Roman",
+                "last_name": "Horbach",
+                "license_number": "JJJ321789"
+            }
+        ]
+
+        for driver in drivers:
+            Driver.objects.create(
+                username=driver["username"],
+                first_name=driver["first_name"],
+                last_name=driver["last_name"],
+                license_number=driver["license_number"]
+            )
+        drivers = Driver.objects.all()
+        response = self.client.get(DRIVER_LIST_URL)
+        paginator_per_page = response.context_data["paginator"].per_page
+        search_value_key = response.context_data["search_form"]["driver"].value()
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response,
+            "taxi/driver_list.html"
+        )
+        self.assertIn("search_form", response.context)
+        self.assertEqual(search_value_key, test_keys[1])
+        self.assertEqual(
+            list(Driver.objects.all()[:paginator_per_page]),
+            list(response.context["driver_list"])
+        )
+        for key, value in test_keys.items():
+            if key != 1:
+                response = self.client.get(DRIVER_LIST_URL, {"driver": value})
+                search_value_key = response.context_data["search_form"][
+                    "driver"
+                ].value()
+                db_q = drivers.filter(username__icontains=value)[:paginator_per_page]
+                self.assertNotEqual(search_value_key, test_keys[key - 1])
+                self.assertEqual(search_value_key, value)
+                self.assertEqual(
+                    list(db_q), list(response.context_data["object_list"])
+                )
+        self.assertContains(response, "Create")
+        self.assertContains(
+            response,
+            reverse("taxi:driver-create"), html=False
+        )
+        self.assertContains(
+            response,
+            reverse(
+                "taxi:driver-detail",
+                kwargs={"pk": response.context["object_list"][0].id}
+            )
+        )
