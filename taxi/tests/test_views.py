@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 from django.urls import reverse
 
+from taxi.forms import LICENSE_ERRORS
 from taxi.models import Manufacturer, Car, Driver
 
 HOME_PAGE = reverse("taxi:index")
@@ -19,7 +20,9 @@ class PublicHomePageTest(TestCase):
 class PrivateHomePageTest(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
-            username="test.user", license_number="AAA123456", password="TestPassword123"
+            username="test.user",
+            license_number="AAA123456",
+            password="TestPassword123"
         )
         self.client.force_login(self.user)
 
@@ -49,7 +52,9 @@ class PublicManufacturerTest(TestCase):
 class PrivateManufacturerTest(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
-            username="test.user", license_number="AAA123456", password="TestPassword123"
+            username="test.user",
+            license_number="AAA123456",
+            password="TestPassword123"
         )
         self.client.force_login(self.user)
 
@@ -76,23 +81,32 @@ class PrivateManufacturerTest(TestCase):
         Manufacturer.objects.create(name="Volkswagen", country="Germany")
         manufacturers = Manufacturer.objects.all()
 
-        response = self.client.get(MANUFACTURER_URL, {"manufacturer": test_keys[1]})
+        response = self.client.get(
+            MANUFACTURER_URL, {"manufacturer": test_keys[1]}
+        )
         self.assertIn("search_form", response.context)
-        search_value_key = response.context_data["search_form"]["manufacturer"].value()
+        search_value_key = response.context_data[
+            "search_form"]["manufacturer"].value()
         db_q = manufacturers.filter(name__icontains=test_keys[1])
         self.assertEqual(search_value_key, test_keys[1])
         self.assertQuerysetEqual(db_q, response.context_data["object_list"])
 
         for key, value in test_keys.items():
             if key != 1:
-                response = self.client.get(MANUFACTURER_URL, {"manufacturer": value})
+                response = self.client.get(
+                    MANUFACTURER_URL,
+                    {"manufacturer": value}
+                )
                 search_value_key = response.context_data["search_form"][
                     "manufacturer"
                 ].value()
                 db_q = manufacturers.filter(name__icontains=value)
                 self.assertNotEqual(search_value_key, test_keys[key - 1])
                 self.assertEqual(search_value_key, value)
-                self.assertQuerysetEqual(db_q, response.context_data["object_list"])
+                self.assertQuerysetEqual(
+                    db_q,
+                    response.context_data["object_list"]
+                )
 
     def test_is_page_contain_paginator(self):
         res = self.client.get(MANUFACTURER_URL)
@@ -165,7 +179,8 @@ class PrivateManufacturerTest(TestCase):
             )
             res = self.client.get(MANUFACTURER_URL, test_keys[i])
             self.assertQuerysetEqual(
-                res.context_data["manufacturer_list"], db_q[:pagination_per_page]
+                res.context_data["manufacturer_list"],
+                db_q[:pagination_per_page]
             )
             res = self.client.get(MANUFACTURER_URL, test_keys[i + 1])
             self.assertQuerysetEqual(
@@ -248,7 +263,7 @@ class PrivateManufacturerTest(TestCase):
         self.assertContains(res, "Update manufacturer")
         res.context["form"].initial["name"] = "Audi"
         res.context["form"].initial["country"] = "Deutschland"
-        self.client.post(
+        res = self.client.post(
             reverse(
                 "taxi:manufacturer-update",
                 kwargs={"pk": manufacturer.id}
@@ -376,8 +391,8 @@ class PrivateCarTest(TestCase):
             new_car.drivers.add(current_driver)
             new_car.save()
         response = self.client.get(CAR_LIST_URL)
-        paginator_per_page = response.context_data["paginator"].per_page
-        search_value_key = response.context_data["search_form"]["model"].value()
+        paginator_per_page = response.context["paginator"].per_page
+        search_value_key = response.context["search_form"]["model"].value()
         db_q = cars.filter(model__icontains=test_keys[1])[:paginator_per_page]
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
@@ -529,7 +544,10 @@ class PrivateCarTest(TestCase):
             {
                 "model": models[2],
                 "manufacturer": db_car.id,
-                "drivers": db_car.drivers.values_list('id', flat=True),
+                "drivers": db_car.drivers.values_list(
+                    "id",
+                    flat=True
+                ),
             }
         )
         self.assertEqual(response.status_code, 302)
@@ -716,8 +734,8 @@ class PrivateDriverTest(TestCase):
             )
         drivers = Driver.objects.all()
         response = self.client.get(DRIVER_LIST_URL)
-        paginator_per_page = response.context_data["paginator"].per_page
-        search_value_key = response.context_data["search_form"]["driver"].value()
+        paginator_per_page = response.context["paginator"].per_page
+        search_value_key = response.context["search_form"]["driver"].value()
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(
             response,
@@ -735,7 +753,9 @@ class PrivateDriverTest(TestCase):
                 search_value_key = response.context_data["search_form"][
                     "driver"
                 ].value()
-                db_q = drivers.filter(username__icontains=value)[:paginator_per_page]
+                db_q = drivers.filter(
+                    username__icontains=value
+                )[:paginator_per_page]
                 self.assertNotEqual(search_value_key, test_keys[key - 1])
                 self.assertEqual(search_value_key, value)
                 self.assertEqual(
@@ -762,10 +782,30 @@ class PrivateDriverTest(TestCase):
         - The 'Update license number' button has right url;
         - If the page has Delete button;
         - The Delete button has right url;
+        - Driver detail form has a right template;
+        - Driver update license form has a right template;
+        - Is right page label;
+        - Check initial data of update license form;
+        - Take form errors or license number;
+        - Is right status_code after post request;
+        - Is right redirect url;
+        - Is driver license updated in db;
+        - Is drivers list page has a new license number;
+        - Delete driver from db.
+        - Is right status_code after post request;
+        - Is right redirect url;
+        >- Is drivers list empty;
         """
         response = self.client.get(
             reverse("taxi:driver-detail", kwargs={"pk": 1})
         )
+        initial_test_keys = {
+            1: self.user.license_number,
+            2: "123456789",
+            3: "12345678",
+            4: "ABCD1234",
+            5: "ABC12345"
+        }
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Update license number")
         self.assertContains(
@@ -777,3 +817,44 @@ class PrivateDriverTest(TestCase):
             response,
             reverse("taxi:driver-delete", kwargs={"pk": self.user.id})
         )
+        self.assertTemplateUsed(response, "taxi/driver_detail.html")
+        response = self.client.get(
+            reverse("taxi:driver-update", kwargs={"pk": 1})
+        )
+        self.assertTemplateUsed(response, "taxi/driver_form.html")
+        self.assertContains(response, "Update driver license")
+        self.assertEqual(
+            response.context["form"].initial["license_number"],
+            initial_test_keys[1]
+        )
+
+        for i in range(2, len(initial_test_keys) - 1):
+            response = self.client.post(
+                reverse("taxi:driver-update", kwargs={"pk": 1}),
+                {"license_number": initial_test_keys[i]}
+            )
+            self.assertEqual(
+                response.context["form"].errors["license_number"][0],
+                LICENSE_ERRORS[i - 1]
+            )
+        response = self.client.post(
+            reverse("taxi:driver-update", kwargs={"pk": 1}),
+            {"license_number": initial_test_keys[5]}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("taxi:driver-list"))
+        self.assertEqual(
+            Driver.objects.get(id=self.user.id).license_number,
+            initial_test_keys[5]
+        )
+        response = self.client.get(response.url)
+        self.assertContains(response, initial_test_keys[5])
+        response = self.client.post(
+            reverse(
+                "taxi:driver-delete",
+                kwargs={"pk": 1}
+            )
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("taxi:driver-list"))
+        self.assertEqual(Driver.objects.all().count(), 0)

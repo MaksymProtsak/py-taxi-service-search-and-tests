@@ -135,7 +135,9 @@ class DriverListView(LoginRequiredMixin, generic.ListView):
         queryset = Driver.objects.all()
         form = DriverSearchForm(self.request.GET)
         if form.is_valid():
-            return queryset.filter(username__icontains=form.cleaned_data["driver"])
+            return queryset.filter(
+                username__icontains=form.cleaned_data["driver"]
+            )
         return queryset
 
 
@@ -157,7 +159,7 @@ class DriverLicenseUpdateView(LoginRequiredMixin, generic.UpdateView):
 
 class DriverDeleteView(LoginRequiredMixin, generic.DeleteView):
     model = Driver
-    success_url = reverse_lazy("")
+    success_url = reverse_lazy("taxi:driver-list")
 
 
 @login_required
@@ -170,4 +172,3 @@ def toggle_assign_to_car(request, pk):
     else:
         driver.cars.add(pk)
     return HttpResponseRedirect(reverse_lazy("taxi:car-detail", args=[pk]))
-

@@ -5,6 +5,12 @@ from django.core.exceptions import ValidationError
 
 from taxi.models import Car, Driver
 
+LICENSE_ERRORS = {
+    1: "License number should consist of 8 characters",
+    2: "First 3 characters should be uppercase letters",
+    3: "Last 5 characters should be digits",
+}
+
 
 class CarForm(forms.ModelForm):
     drivers = forms.ModelMultipleChoiceField(
@@ -76,10 +82,10 @@ def validate_license_number(
     license_number,
 ):  # regex validation is also possible here
     if len(license_number) != 8:
-        raise ValidationError("License number should consist of 8 characters")
+        raise ValidationError(LICENSE_ERRORS[1])
     elif not license_number[:3].isupper() or not license_number[:3].isalpha():
-        raise ValidationError("First 3 characters should be uppercase letters")
+        raise ValidationError(LICENSE_ERRORS[2])
     elif not license_number[3:].isdigit():
-        raise ValidationError("Last 5 characters should be digits")
+        raise ValidationError(LICENSE_ERRORS[3])
 
     return license_number
